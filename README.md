@@ -7,6 +7,15 @@ now live, routed through a planner. This covers the full P0 scope from the
 build plan; everything from here is P1/P2 polish (voice, camera grounding,
 fine-tuning, eval harness, trust-panel UI).
 
+## Architecture
+
+See [`docs/architecture.md`](docs/architecture.md) for the full diagram —
+planner → six specialist agents → deterministic tool layer → local model,
+with SQLite and the trust panel underneath. Short version: `tools.py` is
+the only thing that ever touches the database, and Gemma is never allowed
+to compute a number itself — it interprets what a real Python function
+already calculated.
+
 ## What it does
 
 **Supplier Agent** — give it photos of 2-3 supplier quote slips (handwritten, printed, or a WhatsApp screenshot). It:
