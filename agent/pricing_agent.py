@@ -124,6 +124,22 @@ def reason_and_act(business_name: str, inventory: list[dict]) -> dict:
 
     final_answer = response["message"]["content"]
 
+    # Guard: with one tool call per perishable item, the model sometimes
+    # spends its generation budget on the tool-calling turns and returns an
+    # empty final message. If that happens, ask once more WITHOUT tools so it
+    # is forced to write the recommendation from the scenario numbers already
+    # in context, rather than shipping an empty recommendation.
+    if not final_answer.strip():
+        messages.append({
+            "role": "user",
+            "content": (
+                "Using the scenario numbers already computed above, now write "
+                "your markdown recommendation and a short announcement in plain "
+                "text."
+            ),
+        })
+        final_answer = chat(messages)["message"]["content"]
+
     tools.log_decision(
         business_id=1,  # TODO: pass real business_id through once multi-business support exists
         agent_name="pricing",

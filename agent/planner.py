@@ -19,14 +19,15 @@ respond with ONLY the category name, nothing else:
 - supplier     (comparing supplier quotes, choosing a vendor, negotiating with a supplier)
 - collections  (chasing customer payments, credit/udhaar reminders)
 - pricing      (markdown, discounting, bundle pricing decisions)
-- forecasting  (revenue/cashflow projections)
-- operations   (whether to accept an order, capacity/profitability questions)
+- forecasting  (revenue/sales projections and outlook)
+- operations   (whether to accept an incoming customer order, capacity/profitability questions)
+- cash_flow    (whether the business can afford an upcoming payment or purchase, cash-crunch risk, overall cash-position health, e.g. "can I afford this order next month", "am I heading into a cash crunch", "is my cash position healthy")
 - unclear      (doesn't fit any of the above, or needs clarification)
 
 Owner's request: "{query}"
 """
 
-VALID_CATEGORIES = {"supplier", "collections", "pricing", "forecasting", "operations"}
+VALID_CATEGORIES = {"supplier", "collections", "pricing", "forecasting", "operations", "cash_flow"}
 SPECIALIST_HANDLERS = {}
 
 
@@ -37,12 +38,14 @@ def _register_handlers():
     import pricing_agent
     import forecasting_agent
     import operations_agent
+    import cash_flow_agent
     SPECIALIST_HANDLERS["supplier"] = supplier_agent.run
     SPECIALIST_HANDLERS["collections"] = collections_agent.run
     SPECIALIST_HANDLERS["pricing"] = pricing_agent.run
     SPECIALIST_HANDLERS["forecasting"] = forecasting_agent.run
     SPECIALIST_HANDLERS["operations"] = operations_agent.run
-    # All five named specialists from the Track 3 brief are now wired up.
+    SPECIALIST_HANDLERS["cash_flow"] = cash_flow_agent.run
+    # The five Track 3 specialists plus the Cash Flow Agent are now wired up.
 
 
 def classify(query: str) -> str:

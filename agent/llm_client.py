@@ -31,6 +31,13 @@ def chat(messages: list[dict], tools: list[dict] | None = None) -> dict:
         model=MODEL_NAME,
         messages=messages,
         tools=tools or [],
+        # A 12B model on CPU with Ollama's default context/output budget can
+        # hit the generation cap mid-agent (done_reason="length") on longer
+        # tool-calling exchanges and return empty content — exactly how the
+        # pricing agent (one tool call per perishable item) was failing. Give
+        # it headroom for both the accumulated tool context and the final
+        # written answer.
+        options={"num_ctx": 8192, "num_predict": 2048},
     )
     return response
 

@@ -493,6 +493,157 @@ def draft_order_response(business_name: str, decision: str, context: str, langua
     return response["message"]["content"]
 
 
+# --- Cash Flow Agent tools ---------------------------------------------------
+
+def check_cash_flow(business_id: int, window_days: int = 14,
+                    pending_expense: float = 0.0) -> dict:
+    """
+    Real arithmetic, not an LLM guess. Projects a daily net cash position
+    across `window_days` and reports whether/when it goes negative, how big
+    the gap is, and the single receivable that could close it.
+
+    Model — deliberately conservative and honest about what data exists:
+
+      Cash IN  : each day's forecasted revenue from forecast_revenue() (a
+                 real trend + seasonality model), passed through day by day.
+                 No smoothing, no extra model.
+
+      Cash OUT : the ONLY outflow modeled is `pending_expense`, an optional
+                 one-off amount the owner is explicitly asking about
+                 ("can I afford a Rs 15,000 supplier payment?"), applied up
+                 front (day 1) as the conservative reading of near-term
+                 liquidity.
+
+      Receivables (outstanding ledger_entry rows) are NOT auto-counted as
+      cash-in. ledger_entry has no due_date — only days_overdue — so there
+      is no future date to project a collection from, and inventing one is
+      exactly the unverifiable number this project avoids. Instead a
+      receivable is used only as the LEVER: if the projection goes negative,
+      surface the single outstanding receivable large enough to close the
+      gap, so the owner gets a concrete action ("chase Lakshmi
+      Constructions - Rs 42,000 covers the shortfall") rather than a guessed
+      collection date.
+
+    DOCUMENTED LIMITATION (v1): this schema has no table of scheduled
+    supplier payables (money owed OUT, with due dates). `commitment` rows
+    are inventory promised to a customer (quantity + due_date) — a future
+    cash-IN when the sale completes, NOT a payable — so they are
+    deliberately NOT treated as cash-out here. Real recurring/ scheduled
+    payables are out of scope until the schema models them; the
+    `pending_expense` argument is the honest stand-in for "can I afford this
+    specific payment", instead of pretending the DB already tracks it.
+
+    Returns goes_negative, negative_date, shortfall_amount, largest_lever,
+    the daily projection, and the underlying forecast confidence.
+    """
+    forecast = forecast_revenue(business_id, window_days)
+
+    # Honest degradation: no trustworthy forecast -> do not fabricate a
+    # cash-flow projection on top of one.
+    if forecast.get("confidence") == "low" or "daily_forecast" not in forecast:
+        return {
+            "goes_negative": None,
+            "confidence": "low",
+            "reason": forecast.get(
+                "reason", "Not enough sales history to project cash flow."
+            ),
+            "window_days": window_days,
+            "pending_expense": round(float(pending_expense), 2),
+            "negative_date": None,
+            "shortfall_amount": 0.0,
+            "largest_lever": None,
+        }
+
+    daily = forecast["daily_forecast"]  # [{date, predicted_revenue}, ...]
+
+    # Project net cash FLOW across the window, starting from 0. There is no
+    # bank-balance figure in the schema, so this is projected flow (does the
+    # window's income cover the outflow), not an absolute balance. The one-off
+    # pending_expense is charged on day 1 and offset by that day's forecasted
+    # revenue; every later day only adds revenue, so the deepest dip is
+    # simply whichever end-of-day running total is lowest. worst starts at 0
+    # (not -pending_expense) so a trivially small expense the day's revenue
+    # already covers does NOT get flagged as a crunch.
+    projection = []
+    cumulative = -float(pending_expense)
+    worst = 0.0                           # most negative end-of-day position
+    negative_date = None
+    for d in daily:
+        cumulative += d["predicted_revenue"]
+        if cumulative < worst:
+            worst = cumulative
+        if cumulative < 0 and negative_date is None:
+            negative_date = d["date"]
+        projection.append({
+            "date": d["date"],
+            "cash_in": d["predicted_revenue"],
+            "cumulative_position": round(cumulative, 2),
+        })
+
+    goes_negative = worst < 0
+    shortfall_amount = round(-worst, 2) if goes_negative else 0.0
+
+    # Receivables lever: the largest single outstanding receivable, and
+    # whether it alone covers the gap. No timing assumption is made.
+    largest_lever = None
+    if goes_negative:
+        conn = _conn()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT le.id, COALESCE(c.name, le.customer_name_raw, ''),
+                   le.amount_due, le.days_overdue
+            FROM ledger_entry le
+            LEFT JOIN customer c ON le.customer_id = c.id
+            WHERE le.business_id = ?
+            ORDER BY le.amount_due DESC
+            """,
+            (business_id,),
+        )
+        top = cur.fetchone()
+        conn.close()
+        if top is not None:
+            largest_lever = {
+                "type": "receivable",
+                "ledger_entry_id": top[0],
+                "customer_name": top[1],
+                "amount": round(top[2], 2),
+                "days_overdue": top[3],
+                "covers_shortfall": top[2] >= shortfall_amount,
+            }
+
+    return {
+        "goes_negative": goes_negative,
+        "negative_date": negative_date,
+        "shortfall_amount": shortfall_amount,
+        "largest_lever": largest_lever,
+        "window_days": window_days,
+        "pending_expense": round(float(pending_expense), 2),
+        "projected_cash_in_total": round(
+            sum(d["predicted_revenue"] for d in daily), 2
+        ),
+        "confidence": forecast.get("confidence"),
+        "daily_projection": projection,
+        "limitation": "No scheduled supplier payables exist in this schema; only the "
+        "optional pending_expense is modeled as cash-out, and receivables are used as a "
+        "lever (no collection-date data to auto-count them as cash-in).",
+    }
+
+
+def draft_cash_flow_alert(business_name: str, summary: str, language: str = "English") -> str:
+    """Calls the LLM for the cash-flow alert drafting sub-task, using the
+    already-computed projection summary — kept as its own tool, like the other
+    draft_* helpers, so it's independently testable and swappable."""
+    from llm_client import chat
+    from prompts import CASH_FLOW_ALERT_PROMPT_TEMPLATE
+
+    prompt = CASH_FLOW_ALERT_PROMPT_TEMPLATE.format(
+        business_name=business_name, summary=summary, language=language,
+    )
+    response = chat([{"role": "user", "content": prompt}])
+    return response["message"]["content"]
+
+
 # --- Ollama function-calling schema ---------------------------------------
 # Passed to llm_client.chat(tools=TOOL_SCHEMA) so Gemma knows what it can call.
 
@@ -589,6 +740,22 @@ TOOL_SCHEMA = [
                     "requested_discount_pct": {"type": "number"},
                 },
                 "required": ["product_name", "requested_quantity"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_cash_flow",
+            "description": "Project the business's daily net cash position over a window from forecasted revenue (cash-in) and an optional one-off pending_expense (cash-out), flag whether/when it goes negative, and surface the single outstanding receivable large enough to close any gap.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "business_id": {"type": "integer"},
+                    "window_days": {"type": "integer"},
+                    "pending_expense": {"type": "number", "description": "One-off expense the owner is asking whether they can afford; 0 if none."},
+                },
+                "required": ["business_id", "window_days"],
             },
         },
     },

@@ -151,6 +151,7 @@ def agents():
                 {"key": "pricing", "label": "Pricing", "seal": "03"},
                 {"key": "forecasting", "label": "Forecasting", "seal": "04"},
                 {"key": "operations", "label": "Operations", "seal": "05"},
+                {"key": "cash_flow", "label": "Cash Flow", "seal": "06"},
             ]
         }
     )
