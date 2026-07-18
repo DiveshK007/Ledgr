@@ -1,0 +1,838 @@
+<title>Ledgr — Demo &amp; Manual Test Script</title>
+<style>
+  :root {
+    --paper: #f6f3ea;
+    --paper-raised: #ffffff;
+    --ink: #241d15;
+    --ink-soft: #6b5a44;
+    --ink-faint: #9c8f77;
+    --rule: #ddd5c2;
+    --rule-strong: #241d15;
+    --accent: #3f6b52;
+    --accent-ink: #1f3a2b;
+    --accent-soft: #e4ede5;
+    --critical: #a3392f;
+    --critical-soft: #f5e6e2;
+    --warn: #96631e;
+    --warn-soft: #f1e7d3;
+    --shadow: 0 1px 2px rgba(36, 29, 21, 0.06), 0 6px 20px -8px rgba(36, 29, 21, 0.12);
+
+    --font-display: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16140f;
+      --paper-raised: #1e1b14;
+      --ink: #ede6d6;
+      --ink-soft: #b3a489;
+      --ink-faint: #7d715c;
+      --rule: #3a3426;
+      --rule-strong: #ede6d6;
+      --accent: #74b491;
+      --accent-ink: #dceee3;
+      --accent-soft: #1f3128;
+      --critical: #e2897c;
+      --critical-soft: #3a211d;
+      --warn: #d9a354;
+      --warn-soft: #362a17;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 24px -8px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16140f;
+    --paper-raised: #1e1b14;
+    --ink: #ede6d6;
+    --ink-soft: #b3a489;
+    --ink-faint: #7d715c;
+    --rule: #3a3426;
+    --rule-strong: #ede6d6;
+    --accent: #74b491;
+    --accent-ink: #dceee3;
+    --accent-soft: #1f3128;
+    --critical: #e2897c;
+    --critical-soft: #3a211d;
+    --warn: #d9a354;
+    --warn-soft: #362a17;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 24px -8px rgba(0, 0, 0, 0.5);
+  }
+  :root[data-theme="light"] {
+    --paper: #f6f3ea;
+    --paper-raised: #ffffff;
+    --ink: #241d15;
+    --ink-soft: #6b5a44;
+    --ink-faint: #9c8f77;
+    --rule: #ddd5c2;
+    --rule-strong: #241d15;
+    --accent: #3f6b52;
+    --accent-ink: #1f3a2b;
+    --accent-soft: #e4ede5;
+    --critical: #a3392f;
+    --critical-soft: #f5e6e2;
+    --warn: #96631e;
+    --warn-soft: #f1e7d3;
+    --shadow: 0 1px 2px rgba(36, 29, 21, 0.06), 0 6px 20px -8px rgba(36, 29, 21, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+
+  a { color: var(--accent-ink); }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  .shell { max-width: 760px; margin: 0 auto; padding: 0 24px 120px; }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    padding: 56px 0 28px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .masthead-mark {
+    width: 54px; height: 54px; flex-shrink: 0;
+    border: 2px dashed var(--accent);
+    border-radius: 50%;
+    color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.03em;
+    transform: rotate(-6deg);
+    text-align: center;
+    line-height: 1.15;
+  }
+  .masthead-title-block { display: flex; gap: 16px; align-items: flex-start; }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 40px);
+    line-height: 1.12;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+  .masthead-meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-align: right;
+    line-height: 1.7;
+    padding-top: 4px;
+    white-space: nowrap;
+  }
+  @media (max-width: 560px) { .masthead-meta { text-align: left; white-space: normal; } }
+
+  .deck {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 58ch;
+    margin-top: 4px;
+  }
+
+  /* ---------- Contents strip ---------- */
+  .toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 16px 0 28px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 40px;
+  }
+  .toc a {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    padding: 6px 10px;
+    border-radius: 5px;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .toc a:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+  /* ---------- Section scaffolding ---------- */
+  section { margin-bottom: 52px; scroll-margin-top: 20px; }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .section-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 25px;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+    margin-bottom: 14px;
+  }
+  p { margin-bottom: 12px; max-width: 68ch; }
+  p:last-child { margin-bottom: 0; }
+  .lede { color: var(--ink-soft); }
+
+  /* ---------- Checklist ---------- */
+  .checklist { display: flex; flex-direction: column; gap: 2px; }
+  .check-item {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 12px;
+    padding: 11px 4px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 15px;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .check-item .box {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--ink-faint);
+    border-radius: 4px;
+    margin-top: 2px;
+  }
+  .check-item code { font-size: 13px; }
+  .check-item .note { color: var(--ink-soft); font-size: 13.5px; margin-top: 2px; }
+
+  code, kbd {
+    font-family: var(--font-mono);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    font-size: 0.87em;
+  }
+
+  .codeblock {
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  /* ---------- Timing table ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; background: var(--paper-raised); }
+  thead th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--rule); font-size: 14.5px; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .chip-warn { background: var(--warn-soft); color: var(--warn); }
+  .chip-accent { background: var(--accent-soft); color: var(--accent-ink); }
+  .chip-critical { background: var(--critical-soft); color: var(--critical); }
+
+  /* ---------- Cast reference ---------- */
+  .cast-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+  }
+  .cast-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .cast-card h3 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .cast-card .entity { font-weight: 600; font-size: 14.5px; margin-top: 8px; }
+  .cast-card .entity:first-of-type { margin-top: 0; }
+  .cast-card .fact { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- Agent script cards ---------- */
+  .agent-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .agent-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .agent-seal {
+    width: 40px; height: 40px; flex-shrink: 0;
+    border: 1.5px dashed var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--accent-ink);
+  }
+  .agent-head h3 { font-family: var(--font-display); font-size: 19px; font-weight: 600; }
+  .agent-head .tab-match { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+  .agent-head .chip { margin-left: auto; }
+
+  .agent-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .field-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  .query-block {
+    font-family: var(--font-mono);
+    font-size: 14.5px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 7px;
+    padding: 12px 14px;
+    line-height: 1.55;
+  }
+  .say-block {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    border-left: 2px solid var(--rule);
+    padding-left: 14px;
+  }
+  .verify-list { display: flex; flex-direction: column; gap: 7px; }
+  .verify-item {
+    display: grid; grid-template-columns: 16px 1fr; gap: 10px;
+    font-size: 14px;
+  }
+  .verify-item .mk { color: var(--accent); font-family: var(--font-mono); font-weight: 700; }
+  .verify-item b { font-variant-numeric: tabular-nums; }
+
+  .callout {
+    border-radius: 8px;
+    padding: 13px 15px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    display: flex; gap: 10px;
+  }
+  .callout .mark { font-family: var(--font-mono); font-size: 11px; flex-shrink: 0; margin-top: 1px; }
+  .callout-warn { background: var(--warn-soft); color: var(--warn); }
+  .callout-critical { background: var(--critical-soft); color: var(--critical); }
+  .callout p { margin: 0; color: inherit; max-width: none; }
+
+  .agent-stack { display: flex; flex-direction: column; gap: 22px; }
+
+  /* ---------- Beat (trust panel / wrap) ---------- */
+  .beat-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+  }
+
+  /* ---------- Known issues ---------- */
+  .issue-list { display: flex; flex-direction: column; gap: 14px; }
+  .issue {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .issue:last-child { border-bottom: none; }
+  .issue .tag { font-family: var(--font-mono); font-size: 11px; padding-top: 2px; }
+  .issue .tag.fixed { color: var(--accent-ink); }
+  .issue .tag.limitation { color: var(--warn); }
+  .issue .tag.timing { color: var(--warn); }
+  .issue h4 { font-size: 14.5px; font-weight: 600; margin-bottom: 3px; }
+  .issue p { font-size: 13.5px; color: var(--ink-soft); margin: 0; max-width: 60ch; }
+
+  /* ---------- Appendix ---------- */
+  .appendix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .fact-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 13px 15px;
+  }
+  .fact-card h4 { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+  .fact-card .row { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; padding: 3px 0; }
+  .fact-card .row span:first-child { color: var(--ink-soft); }
+  .fact-card .row b { font-variant-numeric: tabular-nums; text-align: right; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .agent-card, .beat-card, .cast-card, .fact-card { animation: rise 0.4s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .toc, .masthead-mark { display: none; }
+    .agent-card, .beat-card, .fact-card, .cast-card { box-shadow: none; break-inside: avoid; }
+    a { text-decoration: none; color: inherit; }
+  }
+</style>
+
+<div class="shell">
+
+  <div class="masthead">
+    <div class="masthead-title-block">
+      <div class="masthead-mark">LDGR<br/>QA</div>
+      <div>
+        <div class="kicker">Manual test &amp; demo recording script</div>
+        <h1>Ledgr — six-agent<br/>walkthrough</h1>
+      </div>
+    </div>
+    <div class="masthead-meta">
+      Business under test<br/>
+      <b>Sharma Cement Traders</b><br/>
+      Bengaluru · seeded 2026‑07‑18
+    </div>
+  </div>
+
+  <p class="deck">Follow this in order against the running app at <code>localhost:5173</code>. Each agent segment gives you the exact query to type, what to say while it thinks, and the real numbers to check the answer against — pulled straight from the seed data and verified live in this environment.</p>
+
+  <nav class="toc" aria-label="Section contents">
+    <a href="#preflight">Pre-flight</a>
+    <a href="#timing">Timing</a>
+    <a href="#cast">Cast &amp; data</a>
+    <a href="#a01">01 Supplier</a>
+    <a href="#a02">02 Collections</a>
+    <a href="#a03">03 Pricing</a>
+    <a href="#a04">04 Forecasting</a>
+    <a href="#a05">05 Operations</a>
+    <a href="#a06">06 Cash Flow</a>
+    <a href="#trust">Trust panel</a>
+    <a href="#issues">Known issues</a>
+    <a href="#appendix">Reference numbers</a>
+  </nav>
+
+  <!-- ================= PRE-FLIGHT ================= -->
+  <section id="preflight">
+    <div class="section-label">Before you hit record</div>
+    <h2>Pre-flight checklist</h2>
+    <div class="checklist">
+      <div class="check-item">
+        <div class="box"></div>
+        <div><code>curl localhost:11434/api/version</code> responds, and <code>gemma4:12b</code> shows in <code>ollama list</code>.<div class="note">If Ollama was asleep, the very first call in your recording will eat 20–30s just waking the model — do a silent throwaway call first so it's warm.</div></div>
+      </div>
+      <div class="check-item">
+        <div class="box"></div>
+        <div>Backend health check green: <code>curl 127.0.0.1:5000/api/health</code> → <code>{"status":"ok"}</code>.<div class="note">Use <code>127.0.0.1</code>, not <code>localhost</code> — macOS AirPlay Receiver squats on port 5000 over IPv6 and will 403 you.</div></div>
+      </div>
+      <div class="check-item">
+        <div class="box"></div>
+        <div>Frontend open at <code>http://localhost:5173</code>, all six tabs visible (Supplier → Cash Flow).</div>
+      </div>
+      <div class="check-item">
+        <div class="box"></div>
+        <div>Fresh seed: <code>.venv/bin/python db/seed_data.py</code> — resets every number in this script back to a known state.</div>
+      </div>
+      <div class="check-item">
+        <div class="box"></div>
+        <div>Sample quote images present: <code>sample_data/quote1_balaji.png</code>, <code>quote2_krishna.png</code>, <code>quote3_newblr.png</code>.</div>
+      </div>
+      <div class="check-item">
+        <div class="box"></div>
+        <div>A second terminal open in the repo root, ready to paste the Cash Flow CLI command (§06) — the shortfall scenario can't be reached from the UI yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TIMING ================= -->
+  <section id="timing">
+    <div class="section-label">Set expectations before you roll</div>
+    <h2>Timing cheat sheet</h2>
+    <p class="lede">This is a 12B model running on CPU — nothing here is instant. Budget your talking points around the waits below rather than fighting them.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Agent</th><th>Calls</th><th class="num">Typical wait</th><th>Recording note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>01 Supplier</td><td>3 vision reads + reasoning</td><td class="num"><span class="chip chip-critical">~8–10 min</span></td><td>By far the slowest. Trigger it, then cut away and voice-over the architecture while it runs, or pre-record this segment separately and speed-ramp in the edit.</td></tr>
+          <tr><td>02 Collections</td><td>1 tool call + reasoning</td><td class="num"><span class="chip chip-warn">~1–3 min</span></td><td>Fine to sit in real time.</td></tr>
+          <tr><td>03 Pricing</td><td>2 tool calls + reasoning</td><td class="num"><span class="chip chip-warn">~2–5 min</span></td><td>Two items (tomatoes + bread) means two tool round-trips.</td></tr>
+          <tr><td>04 Forecasting</td><td>1 tool call + reasoning</td><td class="num"><span class="chip chip-warn">~1–3 min</span></td><td>Fine to sit in real time.</td></tr>
+          <tr><td>05 Operations</td><td>1 parse + 1 tool call</td><td class="num"><span class="chip chip-warn">~1–3 min</span></td><td>Fine to sit in real time.</td></tr>
+          <tr><td>06 Cash Flow — healthy</td><td>1 tool call + reasoning</td><td class="num"><span class="chip chip-accent">~1 min</span></td><td>Fastest agent — verified 61s live.</td></tr>
+          <tr><td>06 Cash Flow — shortfall (CLI)</td><td>1 tool call + reasoning + drafted alert</td><td class="num"><span class="chip chip-warn">~4–5 min</span></td><td>Verified 255s live. This is the payoff beat — worth the wait.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= CAST ================= -->
+  <section id="cast">
+    <div class="section-label">Grounding, not filler</div>
+    <h2>Cast &amp; seeded data</h2>
+    <p class="lede">Every answer below should trace back to one of these rows. If a live answer cites a number that isn't here, that's a fabrication — flag it.</p>
+    <div class="cast-grid">
+      <div class="cast-card">
+        <h3>Suppliers</h3>
+        <div class="entity">Balaji Building Materials</div>
+        <div class="fact">₹420/bag · 15d credit · 2d delivery · 95% on-time, 22 orders</div>
+        <div class="entity">Krishna Cement Suppliers</div>
+        <div class="fact">₹390/bag · cash on delivery · 4d delivery · 60% on-time, 3 quality issues</div>
+        <div class="entity">New Bengaluru Traders</div>
+        <div class="fact">₹405/bag · 7d credit · 3d delivery · 100% on-time, only 2 orders</div>
+      </div>
+      <div class="cast-card">
+        <h3>Customers (ledger)</h3>
+        <div class="entity">Lakshmi Constructions</div>
+        <div class="fact">₹42,000 due · 36 days overdue · chronic slow-payer, always settles</div>
+        <div class="entity">Manjunath Stores</div>
+        <div class="fact">₹3,200 due · 26 days overdue · loyal 5yr, promised after Diwali stock clears</div>
+        <div class="entity">Farooq Traders</div>
+        <div class="fact">₹1,800 due · 15 days overdue · one reminder sent, silent since</div>
+        <div class="entity">Rahul Enterprises</div>
+        <div class="fact">₹900 due · 6 days overdue · first order, no history</div>
+      </div>
+      <div class="cast-card">
+        <h3>Products</h3>
+        <div class="entity">Tomatoes</div>
+        <div class="fact">20 kg on hand · ₹15 cost / ₹25 sell · 2 days to spoilage</div>
+        <div class="entity">Bread loaves</div>
+        <div class="fact">15 units on hand · ₹20 cost / ₹35 sell · 1 day to spoilage</div>
+        <div class="entity">Cement</div>
+        <div class="fact">200 bags on hand · ₹380 cost / ₹430 sell · 120 already committed to Lakshmi (due 07‑20) → 80 free</div>
+      </div>
+      <div class="cast-card">
+        <h3>Sales history</h3>
+        <div class="fact">90 days synthetic daily revenue ending 2026‑07‑14. Base ~₹8,000/day, mild uptrend, weekends +30%, a festival spike ~9 days before "today."</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCRIPT ================= -->
+  <section>
+    <div class="section-label">The walkthrough</div>
+    <h2>Script — six agents, in tab order</h2>
+    <p class="lede">Numbering matches the seal shown on each tab in the running app (01–06), so viewers can follow along against the screen.</p>
+  </section>
+
+  <div class="agent-stack">
+
+    <!-- 01 SUPPLIER -->
+    <section id="a01" class="agent-card">
+      <div class="agent-head">
+        <div class="agent-seal">01</div>
+        <div>
+          <h3>Supplier</h3>
+          <div class="tab-match">matches tab 01 · vision + effective-cost tool</div>
+        </div>
+        <span class="chip chip-critical">~9 min</span>
+      </div>
+      <div class="agent-body">
+        <div>
+          <div class="field-label">Type + attach</div>
+          <div class="query-block">I got three cement quotes, which supplier should I go with?<br/>+ attach: quote1_balaji.png, quote2_krishna.png, quote3_newblr.png</div>
+        </div>
+        <div class="say-block">"Ledgr reads the photographed quote slips itself — no manual data entry — then weighs each one against that supplier's real delivery history, not just the sticker price."</div>
+        <div>
+          <div class="field-label">Verify the answer says</div>
+          <div class="verify-list">
+            <div class="verify-item"><span class="mk">✓</span><span>Recommends <b>New Bengaluru Traders</b> — cheapest <em>effective</em> cost at <b>₹20,203</b>, even though it isn't the cheapest sticker price.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Krishna has the lowest sticker (₹390/bag) but its effective cost (<b>₹20,670</b>) lands <em>above</em> New Bengaluru's, because of the 60% on-time rate and past quality issues.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Balaji's effective cost (<b>₹21,054</b>) is named as the "safe, pricier" option.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Names specific numbers, not vague language ("some suppliers are riskier").</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 COLLECTIONS -->
+    <section id="a02" class="agent-card">
+      <div class="agent-head">
+        <div class="agent-seal">02</div>
+        <div>
+          <h3>Collections</h3>
+          <div class="tab-match">matches tab 02 · urgency score + relationship notes</div>
+        </div>
+        <span class="chip chip-warn">~2 min</span>
+      </div>
+      <div class="agent-body">
+        <div>
+          <div class="field-label">Type</div>
+          <div class="query-block">who should I follow up with for payment this week</div>
+        </div>
+        <div class="say-block">"It doesn't just sort by amount owed — it has a baseline urgency score, but weighs it against what the owner actually knows about each customer."</div>
+        <div>
+          <div class="field-label">Verify the answer says</div>
+          <div class="verify-list">
+            <div class="verify-item"><span class="mk">✓</span><span><b>Lakshmi Constructions</b> (₹42,000, 36 days) is flagged as the largest sum, but tempered by "this is normal for them" rather than treated as alarming.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span><b>Farooq Traders</b> (₹1,800, 15 days) gets a firmer tone — already reminded once, gone quiet.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span><b>Manjunath Stores</b> treated gently — 5-year loyal customer, has a stated reason (Diwali stock).</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span><b>Rahul Enterprises</b> (₹900, 6 days) is <em>not</em> chased hard — too new, too early to read into it.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 PRICING -->
+    <section id="a03" class="agent-card">
+      <div class="agent-head">
+        <div class="agent-seal">03</div>
+        <div>
+          <h3>Pricing</h3>
+          <div class="tab-match">matches tab 03 · markdown scenarios, real profit math</div>
+        </div>
+        <span class="chip chip-warn">~3 min</span>
+      </div>
+      <div class="agent-body">
+        <div>
+          <div class="field-label">Type</div>
+          <div class="query-block">what should I do with the tomatoes before they go bad</div>
+        </div>
+        <div class="say-block">"Every discount level it considers is a real calculation — expected units sold, revenue, profit — not a guess. It picks the depth that makes sense for how urgent the spoilage actually is."</div>
+        <div>
+          <div class="field-label">Verify the answer says</div>
+          <div class="verify-list">
+            <div class="verify-item"><span class="mk">✓</span><span>Addresses <b>tomatoes</b> (2 days to spoilage) with real urgency, and <b>bread loaves</b> (1 day — sell today or discard) with even more.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Cites actual scenario numbers — a discount %, expected units sold, and a profit figure — not just "discount it."</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Drafts a short markdown announcement, not a corporate sale banner.</span></div>
+          </div>
+        </div>
+        <div class="callout callout-warn">
+          <span class="mark">FIXED</span>
+          <p>This agent returned an empty response before a same-session fix (context/output budget was too tight for its two-item tool-calling exchange). If you're testing on an older checkout, re-pull first.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 FORECASTING -->
+    <section id="a04" class="agent-card">
+      <div class="agent-head">
+        <div class="agent-seal">04</div>
+        <div>
+          <h3>Forecasting</h3>
+          <div class="tab-match">matches tab 04 · linear trend + weekday seasonality</div>
+        </div>
+        <span class="chip chip-warn">~2 min</span>
+      </div>
+      <div class="agent-body">
+        <div>
+          <div class="field-label">Type</div>
+          <div class="query-block">what will my revenue look like over the next two weeks</div>
+        </div>
+        <div class="say-block">"This is the hybrid piece — Gemma never invents a revenue number. It calls a real statistical model, ordinary-least-squares trend plus day-of-week seasonality, and only interprets what comes back."</div>
+        <div>
+          <div class="field-label">Verify the answer says</div>
+          <div class="verify-list">
+            <div class="verify-item"><span class="mk">✓</span><span>States a trend direction (upward, per the seeded ~15% growth) with a confidence level (should be <b>high</b> — 90 days of history).</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Calls out weekends as stronger days — the seed data bakes in a +30% weekend factor.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Every number traces back to <code>forecast_revenue()</code> — nothing invented mid-sentence.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 OPERATIONS -->
+    <section id="a05" class="agent-card">
+      <div class="agent-head">
+        <div class="agent-seal">05</div>
+        <div>
+          <h3>Operations</h3>
+          <div class="tab-match">matches tab 05 · order parsing + feasibility check</div>
+        </div>
+        <span class="chip chip-warn">~2 min</span>
+      </div>
+      <div class="agent-body">
+        <div>
+          <div class="field-label">Type</div>
+          <div class="query-block">a customer wants to order 200 bags of cement, should I take it</div>
+        </div>
+        <div class="say-block">"It never just agrees to close a sale — it checks real stock against what's already committed before saying yes."</div>
+        <div>
+          <div class="field-label">Verify the answer says</div>
+          <div class="verify-list">
+            <div class="verify-item"><span class="mk">✓</span><span>Flags that only <b>80 bags</b> are genuinely available (200 on hand − 120 already promised to Lakshmi Constructions), so 200 requested falls short by <b>120</b>.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Does <em>not</em> quietly approve the order to be agreeable.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Suggests a concrete alternative — partial fulfillment or a later delivery date.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 CASH FLOW -->
+    <section id="a06" class="agent-card">
+      <div class="agent-head">
+        <div class="agent-seal">06</div>
+        <div>
+          <h3>Cash Flow</h3>
+          <div class="tab-match">matches tab 06 · newest agent, built this session</div>
+        </div>
+        <span class="chip chip-accent">new</span>
+      </div>
+      <div class="agent-body">
+
+        <div>
+          <div class="field-label">Part A — in the browser</div>
+          <div class="query-block">am I heading into a cash crunch this month?</div>
+          <div class="say-block" style="margin-top:12px;">"It never estimates cash flow itself — it always calls a deterministic projection first: forecasted revenue as cash coming in, and it treats outstanding receivables honestly, as a lever the owner has to actually chase, never a guaranteed collection."</div>
+          <div class="verify-list" style="margin-top:12px;">
+            <div class="verify-item"><span class="mk">✓</span><span>Reports the business stays cash-positive through the window, citing the real 14‑day projected cash-in total: <b>₹1,51,928.32</b>.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Doesn't manufacture urgency when the position is actually healthy.</span></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px dashed var(--rule); padding-top:16px;">
+          <div class="field-label">Part B — the payoff (terminal, not yet reachable from typed queries)</div>
+          <div class="codeblock">.venv/bin/python agent/cash_flow_agent.py 14 30000</div>
+          <div class="say-block" style="margin-top:12px;">"Now let's ask a harder question: can the owner afford a ₹30,000 supplier payment this month? Watch it find the exact receivable that would cover the gap."</div>
+          <div class="verify-list" style="margin-top:12px;">
+            <div class="verify-item"><span class="mk">✓</span><span>Says the position goes negative on <b>2026‑07‑15</b>, short by <b>₹20,244.61</b>.</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>Names <b>Lakshmi Constructions</b> specifically — the one outstanding receivable (₹42,000) large enough to cover it — not a vague "chase your customers."</span></div>
+            <div class="verify-item"><span class="mk">✓</span><span>The drafted alert underneath repeats the <em>same</em> date and figures, not a re-rounded or invented version.</span></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ================= TRUST PANEL ================= -->
+  <section id="trust">
+    <div class="section-label">Close the loop</div>
+    <h2>The trust panel reveal</h2>
+    <div class="beat-card">
+      <p>After running a few agents, open the trust panel (<code>GET /api/trust-panel</code>, or the in-app panel). Every decision above — including the Cash Flow CLI runs — logged itself here automatically, with the reasoning and the drafted messages attached.</p>
+      <p style="margin-top:10px;">This is the closing beat: nothing the owner sees is a black box. Every recommendation has a receipt.</p>
+    </div>
+  </section>
+
+  <!-- ================= KNOWN ISSUES ================= -->
+  <section id="issues">
+    <div class="section-label">Say this out loud if it happens on camera</div>
+    <h2>Known issues &amp; recovery</h2>
+    <div class="issue-list">
+      <div class="issue">
+        <span class="tag fixed">FIXED</span>
+        <div><h4>Pricing agent returned empty text</h4><p>Root cause: two sequential tool calls (one per perishable item) exhausted the model's default generation budget. Fixed by raising <code>num_ctx</code>/<code>num_predict</code> and adding a no-tools retry if the final message is still empty. Confirmed passing.</p></div>
+      </div>
+      <div class="issue">
+        <span class="tag limitation">LIMIT</span>
+        <div><h4>Cash Flow's shortfall path isn't typed-query-reachable</h4><p>The planner doesn't parse a rupee amount out of free text yet, so a typed "can I afford ₹30,000" won't pass <code>pending_expense</code> through. Use the CLI command in §06 Part B for that beat.</p></div>
+      </div>
+      <div class="issue">
+        <span class="tag timing">SLOW</span>
+        <div><h4>Supplier can look "stuck" for minutes</h4><p>Three sequential vision calls on a 12B model, CPU-only. It's working — check the trust panel if you ever doubt it; a decision only logs there once the agent actually finishes, even if a browser request times out first.</p></div>
+      </div>
+      <div class="issue">
+        <span class="tag limitation">LIMIT</span>
+        <div><h4>403 "AirTunes" instead of your API response</h4><p>macOS AirPlay Receiver owns port 5000 over IPv6. The frontend proxy is already pointed at <code>127.0.0.1:5000</code> to avoid it — if you're curling manually, do the same.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= APPENDIX ================= -->
+  <section id="appendix">
+    <div class="section-label">Fact-check crib sheet</div>
+    <h2>Verified reference numbers</h2>
+    <p class="lede">Ground truth, computed independently of the model, for eyeballing any live answer during recording or QA.</p>
+    <div class="appendix-grid">
+      <div class="fact-card">
+        <h4>Effective cost / bag</h4>
+        <div class="row"><span>New Bengaluru</span><b>₹20,203</b></div>
+        <div class="row"><span>Krishna</span><b>₹20,670</b></div>
+        <div class="row"><span>Balaji</span><b>₹21,054</b></div>
+      </div>
+      <div class="fact-card">
+        <h4>Cement feasibility</h4>
+        <div class="row"><span>On hand</span><b>200</b></div>
+        <div class="row"><span>Committed</span><b>120</b></div>
+        <div class="row"><span>Available</span><b>80</b></div>
+      </div>
+      <div class="fact-card">
+        <h4>Cash flow — healthy</h4>
+        <div class="row"><span>14‑day cash‑in</span><b>₹1,51,928.32</b></div>
+        <div class="row"><span>Goes negative</span><b>No</b></div>
+      </div>
+      <div class="fact-card">
+        <h4>Cash flow — ₹30k expense</h4>
+        <div class="row"><span>Negative on</span><b>2026‑07‑15</b></div>
+        <div class="row"><span>Shortfall</span><b>₹20,244.61</b></div>
+        <div class="row"><span>Lever</span><b>Lakshmi, ₹42,000</b></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Ledgr — on‑device multi‑agent advisor for small Indian retailers</span>
+    <span>Environment: gemma4:12b via Ollama, fully offline</span>
+  </footer>
+
+</div>
