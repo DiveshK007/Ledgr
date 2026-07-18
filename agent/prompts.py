@@ -170,11 +170,11 @@ ORDER_PARSING_PROMPT = """Extract the following fields from the owner's
 message about an incoming bulk order request, as strict JSON only, no
 prose:
 
-{
+{{
   "product_name": string,
   "requested_quantity": number,
   "requested_discount_pct": number   // 0 if no discount is mentioned
-}
+}}
 
 If a field truly isn't mentioned, make a reasonable assumption rather than
 leaving it blank, since this feeds a downstream calculation that needs a

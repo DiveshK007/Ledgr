@@ -9,12 +9,157 @@ fine-tuning, eval harness, trust-panel UI).
 
 ## Architecture
 
-See [`docs/architecture.md`](docs/architecture.md) for the full diagram —
-planner → six specialist agents → deterministic tool layer → local model,
-with SQLite and the trust panel underneath. Short version: `tools.py` is
-the only thing that ever touches the database, and Gemma is never allowed
-to compute a number itself — it interprets what a real Python function
-already calculated.
+A request flows: **browser → Flask API → planner → one of six specialist
+agents → a deterministic tool in `tools.py` → SQLite**, then the model
+interprets the result rather than computing it itself. Every layer that
+touches Ollama is on-device — nothing here ever calls out to the network.
+
+```mermaid
+graph TD
+    classDef client fill:#e4ede5,stroke:#3f6b52,color:#1f3a2b
+    classDef api fill:#f1e7d3,stroke:#96631e,color:#5c3d10
+    classDef planner fill:#f5e6e2,stroke:#a3392f,color:#6b2019
+    classDef agent fill:#ffffff,stroke:#6b5a44,color:#241d15
+    classDef tool fill:#eef2f7,stroke:#4a6fa5,color:#1c2e44
+    classDef model fill:#2b2117,stroke:#2b2117,color:#f3e9d2
+    classDef data fill:#ece1c8,stroke:#8a7657,color:#2b2117
+    classDef voice fill:#f1e7d3,stroke:#96631e,color:#5c3d10
+
+    UI["React UI — localhost:5173<br/>ask box · six agent tabs · trust panel · mic"]:::client
+
+    subgraph API["Flask API — app.py (127.0.0.1:5000)"]
+        ASK["POST /api/ask"]
+        VOICE_EP["POST /api/ask-voice"]
+        TRUST_EP["GET /api/trust-panel"]
+        MISC_EP["GET /api/agents · /api/health"]
+    end
+    class ASK,VOICE_EP,TRUST_EP,MISC_EP api
+
+    subgraph PLANNER["planner.py"]
+        ROUTE["route()<br/>dispatch to specialist"]
+        CLASSIFY["classify()<br/>routing prompt → category"]
+    end
+    class ROUTE,CLASSIFY planner
+
+    subgraph AGENTS["agent/*.py — six specialists<br/>perceive → retrieve → reason (tool-calling) → act"]
+        SUP["Supplier"]
+        COL["Collections"]
+        PRC["Pricing"]
+        FCT["Forecasting"]
+        OPS["Operations"]
+        CSH["Cash Flow"]
+    end
+    class SUP,COL,PRC,FCT,OPS,CSH agent
+
+    subgraph TOOLS["tools.py — deterministic Python, never an LLM guess"]
+        GROUND["grounding reads<br/>lookup_supplier_history · get_ledger_snapshot · get_inventory_snapshot"]
+        T1["calculate_effective_cost"]
+        T2["calculate_urgency_score"]
+        T3["calculate_markdown_scenarios"]
+        T4["forecast_revenue"]
+        T5["check_order_feasibility"]
+        T6["check_cash_flow"]
+        CSHDRAFT["draft_cash_flow_alert()<br/>only if shortfall detected"]
+        LOG["log_decision()"]
+    end
+    class GROUND,T1,T2,T3,T4,T5,T6,CSHDRAFT,LOG tool
+
+    OLLAMA["Ollama — local, offline<br/>gemma4:12b · vision + function-calling"]:::model
+
+    subgraph VOICEIO["voice.py — offline"]
+        STT["faster-whisper STT"]
+        TTS["pyttsx3 TTS"]
+    end
+    class STT,TTS voice
+
+    DB[("db/saathi.db — SQLite<br/>business · supplier · customer · ledger_entry<br/>product · inventory_snapshot · sales_history<br/>commitment · decision_log")]:::data
+
+    UI --> ASK
+    UI --> VOICE_EP
+    UI --> TRUST_EP
+    UI --> MISC_EP
+
+    ASK --> ROUTE
+    VOICE_EP --> STT --> ROUTE
+    ROUTE --> CLASSIFY --> OLLAMA
+    ROUTE -.order parsing, operations only.-> OLLAMA
+
+    ROUTE --> SUP
+    ROUTE --> COL
+    ROUTE --> PRC
+    ROUTE --> FCT
+    ROUTE --> OPS
+    ROUTE --> CSH
+
+    SUP --> GROUND
+    SUP --> T1
+    COL --> GROUND
+    COL --> T2
+    PRC --> GROUND
+    PRC --> T3
+    FCT --> T4
+    OPS --> T5
+    CSH --> T6
+    CSH -.internally calls.-> T4
+
+    SUP --> OLLAMA
+    COL --> OLLAMA
+    PRC --> OLLAMA
+    FCT --> OLLAMA
+    OPS --> OLLAMA
+    CSH --> OLLAMA
+    SUP -.vision: quote photos.-> OLLAMA
+    PRC -.vision: shelf photos.-> OLLAMA
+    CSH --> CSHDRAFT --> OLLAMA
+
+    SUP --> LOG
+    COL --> LOG
+    PRC --> LOG
+    FCT --> LOG
+    OPS --> LOG
+    CSH --> LOG
+
+    GROUND --> DB
+    T4 --> DB
+    T5 --> DB
+    T6 --> DB
+    LOG --> DB
+    DB --> TRUST_EP
+
+    VOICE_EP --> TTS --> UI
+```
+
+### Six agents at a glance
+
+| # | Agent | Owner's question | Required tool (never an LLM guess) |
+|---|-------|-------------------|--------------------------------------|
+| 01 | **Supplier** | "Which supplier quote should I take?" | `calculate_effective_cost` |
+| 02 | **Collections** | "Who should I chase for payment?" | `calculate_urgency_score` |
+| 03 | **Pricing** | "What do I do with stock about to spoil?" | `calculate_markdown_scenarios` |
+| 04 | **Forecasting** | "What will revenue look like?" | `forecast_revenue` |
+| 05 | **Operations** | "Should I accept this bulk order?" | `check_order_feasibility` |
+| 06 | **Cash Flow** | "Am I heading into a cash crunch?" | `check_cash_flow` |
+
+### Reading the diagram
+
+- **One model, two jobs, zero network calls.** Every box touching `OLLAMA`
+  is a local `gemma4:12b` call — routing, vision extraction, tool-calling
+  reasoning, and message drafting all happen on-device.
+- **The model never invents a number.** Each agent's calculation runs
+  through a real Python function in `tools.py` before Gemma reasons over
+  the result — it interprets, it doesn't compute.
+- **`tools.py` is the only thing that touches SQLite.** Agents and the
+  planner never open a DB connection directly, which is what makes the
+  trust panel a complete audit trail rather than a UI over scattered
+  writes.
+- **Cash Flow is the odd one out, on purpose.** It's the only agent with a
+  second, conditional LLM call (`draft_cash_flow_alert`) — it only fires
+  when `check_cash_flow` actually reports a shortfall.
+- **Voice is a wrapper, not a fork.** `/api/ask-voice` transcribes offline,
+  then hands the transcript to the exact same `planner.route()` every typed
+  query goes through.
+
+Full write-up with more detail: [`docs/architecture.md`](docs/architecture.md).
 
 ## What it does
 
